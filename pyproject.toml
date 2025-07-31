@@ -1,0 +1,44 @@
+[project]
+name = "manila-folder"
+version = "0.2.0"
+description = "Your project description"
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+exclude = '''
+(
+  /(
+      \.eggs         # exclude a few common directories in the
+    | \.git          # root of the project
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+  )/
+)
+'''
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+tag_format = "v$version"
+version = "0.2.0"
+version_files = [
+    "pyproject.toml:version"
+]
+update_changelog_on_bump = true
+changelog_file = "CHANGELOG.md"
+bump_message = "bump: version $current_version → $new_version"
+annotated_tag = true
+gpg_sign = false
+pre_bump_hooks = [
+    "pre-commit run --all-files"
+]
+post_bump_hooks = [
+    "git push origin main --tags"
+]

@@ -1,0 +1,33 @@
+# Compiled source #
+###################
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Python #
+###########
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+venv/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# My configurations
+.vscode/
+.idea/
+
+# Log files
+*.log
+.syncignore
