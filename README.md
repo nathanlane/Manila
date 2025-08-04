@@ -227,5 +227,3 @@ MIT License - see LICENSE file for details
 4. Submit pull request
 
 ---
-
-*ManilaFolder - Advanced document organization with the power of AI* 📁
