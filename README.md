@@ -1,8 +1,10 @@
-# ManilaFolder
+# ManilaFolder 🗂️
 
-**Quickly spin up and manage ChromaDB vector databases** with an intuitive Streamlit interface. Perfect for researchers and developers who need fast, local vector search capabilities for their documents.
+**Quickly spin up and manage ChromaDB vector databases** with an intuitive Streamlit interface—perfect for researchers and developers who need fast, local vector search capabilities for their documents.
 
 ManilaFolder streamlines the process of creating, managing, and querying ChromaDB vector stores for PDF documents. With just a few clicks, you can have a fully functional vector database with semantic search, document chunking, and optional OCR correction for scanned texts.
+
+This is built from pure laziness. The name is from my old home of Manila.
 
 ## 🚀 Quick Start
 
@@ -148,7 +150,7 @@ Sophisticated OCR error correction system with:
 - Detailed statistics tracking
 
 **`ocr_patterns.py`** (870 lines)
-Comprehensive pattern library for OCR corrections including character substitutions, ligature fixes, spacing corrections, and context-aware replacements.
+Comprehensive pattern library for OCR corrections, including character substitutions, ligature fixes, spacing corrections, and context-aware replacements.
 
 **`gui.py`** (506 lines)
 Legacy PySimpleGUI desktop interface with RetroMono theme. Functional but superseded by Streamlit interface.
