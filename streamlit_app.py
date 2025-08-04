@@ -54,8 +54,10 @@ import streamlit as st
 from src.manilafolder.config import Config
 from src.manilafolder.db import (
     create_vector_store,
+    delete_collection,
     get_collection_stats,
     is_valid_chroma_db,
+    list_collections,
     open_vector_store,
 )
 from src.manilafolder.ingest import get_supported_extensions, ingest_pdfs
@@ -339,6 +341,12 @@ def create_database_interface():
             value=str(Path.home()),
             help="Directory where the database folder will be created",
         )
+        
+        collection_name = st.text_input(
+            "Collection Name",
+            value="documents",
+            help="Name for the initial collection (e.g., 'research', 'contracts', 'manuals')",
+        )
 
         # Show the full path that will be created
         if db_name and parent_dir:
@@ -364,10 +372,17 @@ def create_database_interface():
                     st.error(f"Directory already exists and is not empty: {db_path}")
                     return
 
+                # Validate collection name
+                if not collection_name.strip():
+                    st.error("Please enter a collection name")
+                    return
+                
                 # Create the database
                 with st.spinner("Creating database..."):
                     collection = create_vector_store(
-                        str(db_path), st.session_state.config
+                        str(db_path), 
+                        st.session_state.config,
+                        collection_name=collection_name.strip()
                     )
 
                     # Validate the database creation
@@ -449,9 +464,29 @@ def open_database_interface():
                 return
 
             try:
+                # List available collections
+                available_collections = list_collections(str(db_path))
+                
+                if not available_collections:
+                    st.error("No collections found in this database")
+                    return
+                
+                # If multiple collections, let user choose
+                if len(available_collections) > 1:
+                    selected_collection = st.selectbox(
+                        "Select a collection to open:",
+                        available_collections,
+                        key="open_collection_selector"
+                    )
+                else:
+                    selected_collection = available_collections[0]
+                    st.info(f"Opening collection: {selected_collection}")
+                
                 with st.spinner("Opening database..."):
                     collection = open_vector_store(
-                        str(db_path), st.session_state.config
+                        str(db_path), 
+                        st.session_state.config,
+                        collection_name=selected_collection
                     )
 
                     # Update session state
@@ -517,6 +552,23 @@ def database_selection_sidebar():
                 unsafe_allow_html=True,
             )
 
+            # Add collection styling
+            st.markdown(
+                """
+            <style>
+            .collection-box {
+                background-color: #F3E8FF;
+                border: 1px solid #C084FC;
+                border-radius: 6px;
+                padding: 0.5rem;
+                margin: 0.25rem 0;
+                font-size: 0.875rem;
+            }
+            </style>
+            """,
+                unsafe_allow_html=True,
+            )
+            
             # Show path in a styled box
             db_name = Path(st.session_state.db_path).name
             st.markdown(
@@ -524,6 +576,17 @@ def database_selection_sidebar():
             <div class="db-info-box">
                 <strong>📁 {db_name}</strong><br>
                 <span class="db-path">{st.session_state.db_path}</span>
+            </div>
+            """,
+                unsafe_allow_html=True,
+            )
+            
+            # Show current collection
+            current_collection = getattr(st.session_state.collection, 'name', 'Unknown')
+            st.markdown(
+                f"""
+            <div class="collection-box">
+                <strong>📂 Collection:</strong> {current_collection}
             </div>
             """,
                 unsafe_allow_html=True,
@@ -540,6 +603,82 @@ def database_selection_sidebar():
         except Exception:
             st.sidebar.error("Could not load database stats")
 
+        # Collection Management
+        st.sidebar.markdown("---")
+        with st.sidebar.expander("📚 Collection Management", expanded=False):
+            # List collections in the database
+            try:
+                available_collections = list_collections(st.session_state.db_path)
+                if len(available_collections) > 1:
+                    st.write("**Switch Collection**")
+                    selected_collection = st.selectbox(
+                        "Select collection:",
+                        available_collections,
+                        index=available_collections.index(current_collection) if current_collection in available_collections else 0,
+                        key="collection_selector"
+                    )
+                    
+                    if selected_collection != current_collection:
+                        if st.button("🔄 Switch", key="switch_collection"):
+                            try:
+                                st.session_state.collection = open_vector_store(
+                                    st.session_state.db_path,
+                                    st.session_state.config,
+                                    collection_name=selected_collection
+                                )
+                                st.success(f"Switched to collection: {selected_collection}")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Failed to switch collection: {str(e)}")
+                
+                st.write("**Create New Collection**")
+                new_collection_name = st.text_input(
+                    "Collection name:",
+                    placeholder="Enter collection name",
+                    key="new_collection_name"
+                )
+                
+                if st.button("➕ Create", key="create_collection", disabled=not new_collection_name):
+                    try:
+                        # Create new collection
+                        new_collection = create_vector_store(
+                            st.session_state.db_path,
+                            st.session_state.config,
+                            collection_name=new_collection_name
+                        )
+                        st.session_state.collection = new_collection
+                        st.success(f"Created collection: {new_collection_name}")
+                        st.rerun()
+                    except ValueError as e:
+                        st.error(str(e))
+                    except Exception as e:
+                        st.error(f"Failed to create collection: {str(e)}")
+                
+                # Delete collection (with safety check)
+                if len(available_collections) > 1:
+                    st.write("**Delete Collection**")
+                    st.warning("⚠️ Deletion is permanent!")
+                    delete_collection_name = st.selectbox(
+                        "Select collection to delete:",
+                        [c for c in available_collections if c != current_collection],
+                        key="delete_collection_selector"
+                    )
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        confirm_delete = st.checkbox("I understand", key="confirm_delete")
+                    with col2:
+                        if st.button("🗑️ Delete", key="delete_collection", disabled=not confirm_delete):
+                            try:
+                                delete_collection(st.session_state.db_path, delete_collection_name)
+                                st.success(f"Deleted collection: {delete_collection_name}")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Failed to delete collection: {str(e)}")
+                
+            except Exception as e:
+                st.error(f"Error managing collections: {str(e)}")
+        
         # Close database button with better styling
         st.sidebar.markdown("---")
         if st.sidebar.button(

@@ -116,53 +116,67 @@ class ChromaBackend:
             raise RuntimeError(f"Document addition failed: {e}")
 
 
-def create_vector_store(db_path: str, config: Optional[Config] = None) -> Any:
+def create_vector_store(
+    db_path: str, config: Optional[Config] = None, collection_name: Optional[str] = None
+) -> Any:
     """Create a new vector store at the specified path.
 
     Args:
         db_path: Path where the database should be created
         config: Configuration object, uses defaults if None
+        collection_name: Name for the collection, uses config default if None
 
     Returns:
         ChromaDB collection instance
 
     Raises:
         RuntimeError: If database creation fails
-        FileExistsError: If database already exists
+        ValueError: If collection already exists
     """
     if config is None:
         config = Config()
 
     db_path = Path(db_path).resolve()
-
-    # Check if database already exists
-    if db_path.exists() and any(db_path.iterdir()):
-        raise FileExistsError(f"Database already exists at {db_path}")
+    
+    # Use provided collection name or fall back to config
+    actual_collection_name = collection_name or config.collection_name
 
     # Create directory if it doesn't exist
     db_path.mkdir(parents=True, exist_ok=True)
 
+    # Check if this specific collection already exists
+    if db_path.exists() and any(db_path.iterdir()):
+        existing_collections = list_collections(str(db_path))
+        if actual_collection_name in existing_collections:
+            raise ValueError(
+                f"Collection '{actual_collection_name}' already exists in database at {db_path}"
+            )
+
     try:
         backend = ChromaBackend(config)
-        collection = backend.create_collection(config.collection_name, str(db_path))
+        collection = backend.create_collection(actual_collection_name, str(db_path))
         return collection
     except Exception as e:
         log_error(f"Failed to create vector store at {db_path}", e, config)
         raise
 
 
-def open_vector_store(db_path: str, config: Optional[Config] = None) -> Any:
+def open_vector_store(
+    db_path: str, config: Optional[Config] = None, collection_name: Optional[str] = None
+) -> Any:
     """Open an existing vector store.
 
     Args:
         db_path: Path to the existing database
         config: Configuration object, uses defaults if None
+        collection_name: Name of collection to open, uses config default if None
 
     Returns:
         ChromaDB collection instance
 
     Raises:
         FileNotFoundError: If database doesn't exist
+        ValueError: If specified collection doesn't exist
         RuntimeError: If database opening fails
     """
     if config is None:
@@ -174,9 +188,20 @@ def open_vector_store(db_path: str, config: Optional[Config] = None) -> Any:
     if not is_valid_chroma_db(db_path):
         raise FileNotFoundError(f"No valid ChromaDB found at {db_path}")
 
+    # Use provided collection name or fall back to config
+    actual_collection_name = collection_name or config.collection_name
+    
+    # Verify collection exists
+    existing_collections = list_collections(str(db_path))
+    if actual_collection_name not in existing_collections:
+        raise ValueError(
+            f"Collection '{actual_collection_name}' not found. "
+            f"Available collections: {', '.join(existing_collections)}"
+        )
+
     try:
         backend = ChromaBackend(config)
-        collection = backend.load_collection(config.collection_name, str(db_path))
+        collection = backend.load_collection(actual_collection_name, str(db_path))
         return collection
     except Exception as e:
         log_error(f"Failed to open vector store at {db_path}", e, config)
@@ -241,3 +266,46 @@ def get_collection_stats(collection: Any) -> Dict[str, int]:
     except Exception as e:
         log_error("Failed to get collection statistics", e)
         raise RuntimeError(f"Stats retrieval failed: {e}")
+
+
+def list_collections(db_path: str) -> List[str]:
+    """List all collections in a ChromaDB database.
+
+    Args:
+        db_path: Path to the ChromaDB database
+
+    Returns:
+        List of collection names
+
+    Raises:
+        RuntimeError: If listing fails
+    """
+    try:
+        client = chromadb.PersistentClient(
+            path=str(db_path), settings=Settings(anonymized_telemetry=False)
+        )
+        collections = client.list_collections()
+        return [col.name for col in collections]
+    except Exception as e:
+        log_error(f"Failed to list collections at {db_path}", e)
+        raise RuntimeError(f"Collection listing failed: {e}")
+
+
+def delete_collection(db_path: str, collection_name: str) -> None:
+    """Delete a collection from the ChromaDB database.
+
+    Args:
+        db_path: Path to the ChromaDB database
+        collection_name: Name of the collection to delete
+
+    Raises:
+        RuntimeError: If deletion fails
+    """
+    try:
+        client = chromadb.PersistentClient(
+            path=str(db_path), settings=Settings(anonymized_telemetry=False)
+        )
+        client.delete_collection(name=collection_name)
+    except Exception as e:
+        log_error(f"Failed to delete collection '{collection_name}'", e)
+        raise RuntimeError(f"Collection deletion failed: {e}")

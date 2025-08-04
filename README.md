@@ -1,8 +1,8 @@
 # ManilaFolder
 
-**Quickly spin up and manage ChromaDB vector databases** with an tiny Streamlit interface. Perfect for researchers and developers who need fast, local vector search capabilities to documents.
+**Quickly spin up and manage ChromaDB vector databases** with an intuitive Streamlit interface. Perfect for researchers and developers who need fast, local vector search capabilities for their documents.
 
-ManilaFolder streamlines the process of creating and populating ChromaDB vector stores for PDF documents (and more). With just a few clicks, you can have a fully functional vector database with semantic search, document chunking, and optional OCR correction for scanned texts.
+ManilaFolder streamlines the process of creating, managing, and querying ChromaDB vector stores for PDF documents. With just a few clicks, you can have a fully functional vector database with semantic search, document chunking, and optional OCR correction for scanned texts.
 
 ## 🚀 Quick Start
 
@@ -17,7 +17,7 @@ make streamlit
 
 # Your vector DB manager is now running at http://localhost:8501
 ```
-Onc
+
 **30 seconds to your first vector database:**
 1. Click "Create New Database" in the sidebar
 2. Name your database and click Create

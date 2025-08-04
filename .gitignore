@@ -31,3 +31,8 @@ venv/
 # Log files
 *.log
 .syncignore
+
+# Environment variables
+.env
+.env.*
+*.env
